@@ -1,0 +1,81 @@
+name: test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+
+  build_and_push:
+    if: "! contains(toJSON(github.event.commits.*.message), '[ci skip]')"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enviornment variables
+        uses: franzdiebold/github-env-vars-action@v1.0.0
+        env:
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+
+      - name: login
+        run: echo $FOSS_PACKAGE_TOKEN  | docker login -u $FOSS_PACKAGE_USER --password-stdin ghcr.io
+        env:
+          FOSS_PACKAGE_TOKEN: ${{ secrets.FOSS_PACKAGE_TOKEN }}
+          FOSS_PACKAGE_USER: ${{ secrets.FOSS_PACKAGE_USER }}
+
+      - name: Set btcd target
+        env:
+            ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+        run: |
+          echo ::set-env name=BTCD_TARGET_IMAGE::$(echo ghcr.io/xplorfin/btcd:latest)
+
+      - name: Set lnd target
+        env:
+            ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+        run: |
+          echo ::set-env name=LND_TARGET_IMAGE::$(echo ghcr.io/xplorfin/lnd:latest)
+
+      - name: Bump version and push tag
+        id: new_tag
+        uses: anothrNick/github-tag-action@1.17.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WITH_V: false
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+
+      - name: set new tag in env
+        run: echo ::set-env name=NEW_TAG::$(echo "${{ steps.new_tag.outputs.new_tag }}")
+        env:
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+
+
+      - name: build lnd image
+        run: |
+              docker build -t $LND_TARGET_IMAGE:latest \
+              -f lnd/source/dev.Dockerfile \
+              --build-arg GIT_COMMIT_HASH=$GITHUB_SHA \
+              --build-arg IMAGE_VERSION=$NEW_TAG \
+              lnd/source/
+              docker tag $LND_TARGET_IMAGE:latest $LND_TARGET_IMAGE:$NEW_TAG
+
+      - name: build btcd image
+        run: |
+              docker build -t $BTCD_TARGET_IMAGE:latest \
+              -f btcd/Dockerfile \
+              --build-arg GIT_COMMIT_HASH=$GITHUB_SHA \
+              --build-arg IMAGE_VERSION=$NEW_TAG \
+              btcd
+              docker tag $BTCD_TARGET_IMAGE:latest $BTCD_TARGET_IMAGE:$NEW_TAG
+
+      - name: push image(s)
+        run: |
+              docker push $BTCD_TARGET_IMAGE:latest
+              docker push $BTCD_TARGET_IMAGE:$NEW_TAG
+
+              docker push $LND_TARGET_IMAGE:latest
+              docker push $LND_TARGET_IMAGE:$NEW_TAG
