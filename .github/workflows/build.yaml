@@ -32,13 +32,13 @@ jobs:
         env:
             ACTIONS_ALLOW_UNSECURE_COMMANDS: true
         run: |
-          echo ::set-env name=BTCD_TARGET_IMAGE::$(echo ghcr.io/xplorfin/btcd:latest)
+          echo ::set-env name=BTCD_TARGET_IMAGE::$(echo ghcr.io/xplorfin/btcd)
 
       - name: Set lnd target
         env:
             ACTIONS_ALLOW_UNSECURE_COMMANDS: true
         run: |
-          echo ::set-env name=LND_TARGET_IMAGE::$(echo ghcr.io/xplorfin/lnd:latest)
+          echo ::set-env name=LND_TARGET_IMAGE::$(echo ghcr.io/xplorfin/lnd)
 
       - name: Bump version and push tag
         id: new_tag
