@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Enviornment variables
-        uses: franzdiebold/github-env-vars-action@v1.0.0
+        uses: franzdiebold/github-env-vars-action@v1.3.0
         env:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
 
